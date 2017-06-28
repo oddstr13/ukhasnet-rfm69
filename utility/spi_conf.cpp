@@ -16,23 +16,35 @@
  * Based on RFM69 LowPowerLabs (https://github.com/LowPowerLab/RFM69/)
  */
 
-#include "ukhasnet-rfm69.h"
+#include <Arduino.h>
+#include "UKHASnetRFM69.h"
 #include "spi_conf.h"
+
+#include <SPI.h>
 
 /**
  * User SPI setup function. Use this function to set up the SPI peripheral
  * on the microcontroller, such as to setup the IO, set the mode (0,0) for the
  * RFM69, and become a master.
- * @returns RFM_OK on success, RFM_FAIL or RFM_TIMEOUT on failure
+ * @returns True on success, false on failure.
  */
+
+int spi_ss;
+rfm_status_t spi_set_ss(int pin)
+{
+    spi_ss = pin;
+    return RFM_OK;
+}
+
 rfm_status_t spi_init(void)
 {
-    /* Set up the SPI peripheral */
+    Serial.println("START spi_init");
+    SPI.begin();
+    pinMode(spi_ss, OUTPUT);
+    digitalWrite(spi_ss, HIGH);
 
-    /*
-     * You should return RFM_OK if everything went well, otherwise return
-     * RFM_FAIL or RFM_TIMEOUT to signal that something went wrong.
-     * */
+    Serial.println("END spi_init");
+    /* Return RFM_OK if everything went ok, otherwise RFM_FAIL */
     return RFM_OK;
 }
 
@@ -41,47 +53,31 @@ rfm_status_t spi_init(void)
  * @warn This does not handle SS, since higher level functions might want to do
  * burst read and writes
  * @param out The byte to be sent
- * @param in A pointer into which we place the returned value
- * @returns RFM_OK on success, RFM_FAIL or RFM_TIMEOUT on failure
+ * @returns The byte received
  */
 rfm_status_t spi_exchange_single(const rfm_reg_t out, rfm_reg_t* in)
 {
-    /* Insert code to send a byte and receive a byte at the same time */
-
-    /*
-     * You should return RFM_OK if everything went well, otherwise return
-     * RFM_FAIL or RFM_TIMEOUT to signal that something went wrong.
-     * */
+    *in = SPI.transfer(out);
     return RFM_OK;
 }
 
 /**
  * User function to assert the slave select pin
- * @returns RFM_OK on success, RFM_FAIL or RFM_TIMEOUT on failure
  */
 rfm_status_t spi_ss_assert(void)
 {
-    /* Insert code to assert the SS line */
-
-    /*
-     * You should return RFM_OK if everything went well, otherwise return
-     * RFM_FAIL or RFM_TIMEOUT to signal that something went wrong.
-     * */
+    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    digitalWrite(spi_ss, LOW);
     return RFM_OK;
 }
 
 /**
  * User function to deassert the slave select pin
- * @returns RFM_OK on success, RFM_FAIL or RFM_TIMEOUT on failure
  */
 rfm_status_t spi_ss_deassert(void)
 {
-    /* Insert code to deassert the SS line */
-
-    /*
-     * You should return RFM_OK if everything went well, otherwise return
-     * RFM_FAIL or RFM_TIMEOUT to signal that something went wrong.
-     * */
+    digitalWrite(spi_ss, HIGH);
+    SPI.endTransaction();
     return RFM_OK;
 }
 

@@ -742,6 +742,7 @@ typedef enum rfm_status_t { RFM_OK, RFM_FAIL, RFM_TIMEOUT } rfm_status_t;
 #define RF_TESTLNA_SENSITIVE                    0x2D
 
 /* Public prototypes here */
+rfm_status_t rf69_init(int spi_ss);
 rfm_status_t rf69_init(void);
 rfm_status_t rf69_read_temp(int8_t* temperature);
 rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
@@ -756,6 +757,7 @@ rfm_status_t rf69_sample_rssi(int16_t* rssi);
  * Prototypes are provided here such that the library can be built.
  * Documentation can be found in spi_conf.c.
  */
+rfm_status_t spi_set_ss(int pin);
 rfm_status_t spi_init(void);
 rfm_status_t spi_exchange_single(const rfm_reg_t out, rfm_reg_t* in);
 rfm_status_t spi_ss_assert(void);

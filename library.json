@@ -1,0 +1,16 @@
+{
+  "name": "UKHASnet-RFM69",
+  "keywords": "rfm69,wireless,ukhasnet",
+  "description": "An RFM69 library maintained by and for the UKHASnet network",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UKHASnet/ukhasnet-rfm69.git"
+  },
+  "version": "1.0.0",
+  "authors": {
+    "name": "UKHASnet community"
+  },
+  "exclude": [],
+  "frameworks": "arduino",
+  "platforms": "*"
+}

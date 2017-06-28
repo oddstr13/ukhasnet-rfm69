@@ -19,16 +19,8 @@
 #ifndef __SPI_CONF_H__
 #define __SPI_CONF_H__
 
-#include <avr/io.h>
+//#include <avr/io.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-/* SPI pins and ports */
-#define SPI_DDR     DDRB
-#define SPI_PORT    PORTB
-#define SPI_SS      _BV(2)
-#define SPI_MOSI    _BV(3)
-#define SPI_MISO    _BV(4)
-#define SPI_SCK     _BV(5)
 
 #endif /* __SPI_CONF_H__ */

@@ -25,11 +25,14 @@
  * @{
  */
 
-#include <avr/io.h>
-#include <util/delay.h>
+//#include <avr/io.h>
+//#include <util/delay.h>
+#include <Arduino.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#include "ukhasnet-rfm69.h"
-#include "ukhasnet-rfm69-config.h"
+#include "UKHASnetRFM69.h"
+#include "UKHASnetRFM69-config.h"
 
 /** Track the current mode of the radio */
 static rfm_reg_t _mode;
@@ -46,6 +49,13 @@ static rfm_status_t _rf69_clear_fifo(void);
  * Initialise the RFM69 device and set into SLEEP mode (0.1uA)
  * @returns RFM_OK for success, RFM_FAIL for failure.
  */
+ 
+rfm_status_t rf69_init(int spi_ss)
+{
+    spi_set_ss(spi_ss);
+    return rf69_init();
+}
+
 rfm_status_t rf69_init(void)
 {
     uint8_t i;
@@ -346,7 +356,7 @@ rfm_status_t rf69_read_temp(int8_t* temperature)
     temp = 0;
     while (!(RF_TEMP1_MEAS_RUNNING & temp)) {
         _rf69_read(RFM69_REG_4E_TEMP1, &temp);
-        _delay_ms(1);
+        delay(1);
         if(++timeout > 50)
         {
             *temperature = -127.0;
@@ -360,7 +370,7 @@ rfm_status_t rf69_read_temp(int8_t* temperature)
     temp = 0;
     while (RF_TEMP1_MEAS_RUNNING & temp) {
         _rf69_read(RFM69_REG_4E_TEMP1, &temp);
-        _delay_ms(1);
+        delay(1);
         if(++timeout > 10)
         {
             *temperature = -127.0;
