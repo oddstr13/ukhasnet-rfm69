@@ -38,10 +38,6 @@
 static rfm_reg_t _mode;
 
 /* Private functions */
-static rfm_status_t _rf69_read(const rfm_reg_t reg, rfm_reg_t* result);
-static rfm_status_t _rf69_write(const rfm_reg_t reg, const rfm_reg_t val);
-static rfm_status_t _rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest, 
-        uint8_t len);
 static rfm_status_t _rf69_fifo_write(const rfm_reg_t* src, uint8_t len);
 static rfm_status_t _rf69_clear_fifo(void);
 
@@ -66,13 +62,13 @@ rfm_status_t rf69_init(void)
         return RFM_FAIL;
 
     /* Zero version number, RFM probably not connected/functioning */
-    _rf69_read(RFM69_REG_10_VERSION, &res);
+    rf69_read(RFM69_REG_10_VERSION, &res);
     if (!res)
         return RFM_FAIL;
 
     /* Set up device */
     for (i = 0; CONFIG[i][0] != 255; i++)
-        _rf69_write(CONFIG[i][0], CONFIG[i][1]);
+        rf69_write(CONFIG[i][0], CONFIG[i][1]);
     
     /* Set initial mode */
     rf69_set_mode(RFM69_MODE_SLEEP);
@@ -87,7 +83,7 @@ rfm_status_t rf69_init(void)
  * @param result A pointer to where to put the result
  * @returns RFM_OK for success, RFM_FAIL for failure.
  */
-static rfm_status_t _rf69_read(const rfm_reg_t reg, rfm_reg_t* result)
+rfm_status_t rf69_read(const rfm_reg_t reg, rfm_reg_t* result)
 {
     rfm_reg_t data;
 
@@ -112,7 +108,7 @@ static rfm_status_t _rf69_read(const rfm_reg_t reg, rfm_reg_t* result)
  * @param val The value for the address
  * @returns RFM_OK for success, RFM_FAIL for failure.
  */
-static rfm_status_t _rf69_write(const rfm_reg_t reg, const rfm_reg_t val)
+rfm_status_t rf69_write(const rfm_reg_t reg, const rfm_reg_t val)
 {
     rfm_reg_t dummy;
 
@@ -137,7 +133,7 @@ static rfm_status_t _rf69_write(const rfm_reg_t reg, const rfm_reg_t val)
  * @param len The number of bytes to read
  * @returns RFM_OK for success, RFM_FAIL for failure.
  */
-static rfm_status_t _rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest, 
+rfm_status_t rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest, 
         uint8_t len)
 {
     rfm_reg_t dummy;
@@ -151,6 +147,30 @@ static rfm_status_t _rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest,
         spi_exchange_single(0xFF, dest);
         dest++;
     }
+
+    spi_ss_deassert();
+
+    return RFM_OK;
+}
+/**
+ * Write a given number of bytes into the registers in the RFM69.
+ * @param reg The first byte address into which to write
+ * @param src A pointer into the source data buffer
+ * @param len The number of bytes to write
+ * @returns RFM_OK for success, RFM_FAIL for failure.
+ */
+rfm_status_t rf69_burst_write(rfm_reg_t reg, const rfm_reg_t* src, 
+        uint8_t len)
+{
+    rfm_reg_t dummy;
+
+    spi_ss_assert();
+    
+    /* Send the start address with the write mask on */
+    spi_exchange_single(reg | RFM69_SPI_WRITE_MASK, &dummy); 
+
+    while (len--)
+        spi_exchange_single(*src++, &dummy);
 
     spi_ss_deassert();
 
@@ -194,8 +214,8 @@ static rfm_status_t _rf69_fifo_write(const rfm_reg_t* src, uint8_t len)
 rfm_status_t rf69_set_mode(const rfm_reg_t newMode)
 {
     rfm_reg_t res;
-    _rf69_read(RFM69_REG_01_OPMODE, &res);
-    _rf69_write(RFM69_REG_01_OPMODE, (res & 0xE3) | newMode);
+    rf69_read(RFM69_REG_01_OPMODE, &res);
+    rf69_write(RFM69_REG_01_OPMODE, (res & 0xE3) | newMode);
     _mode = newMode;
     return RFM_OK;
 }
@@ -222,16 +242,16 @@ rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
 
     /* Check IRQ register for payloadready flag
      * (indicates RXed packet waiting in FIFO) */
-    _rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
+    rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
     if (res & RF_IRQFLAGS2_PAYLOADREADY)
     {
         /* Get packet length from first byte of FIFO */
-        _rf69_read(RFM69_REG_00_FIFO, len);
+        rf69_read(RFM69_REG_00_FIFO, len);
         *len += 1;
         /* Read FIFO into our Buffer */
-        _rf69_burst_read(RFM69_REG_00_FIFO, buf, RFM69_FIFO_SIZE);
+        rf69_burst_read(RFM69_REG_00_FIFO, buf, RFM69_FIFO_SIZE);
         /* Read RSSI register (should be of the packet? - TEST THIS) */
-        _rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
+        rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
         *lastrssi = -(res/2);
         /* Clear the radio FIFO (found in HopeRF demo code) */
         _rf69_clear_fifo();
@@ -274,22 +294,22 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
     if (power <= 17) {
         /* Set PA Level */
         paLevel = power + 28;
-        _rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | paLevel);        
+        rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | paLevel);        
     } else {
         /* Disable Over Current Protection */
-        _rf69_write(RFM69_REG_13_OCP, RF_OCP_OFF);
+        rf69_write(RFM69_REG_13_OCP, RF_OCP_OFF);
         /* Enable High Power Registers */
-        _rf69_write(RFM69_REG_5A_TEST_PA1, 0x5D);
-        _rf69_write(RFM69_REG_5C_TEST_PA2, 0x7C);
+        rf69_write(RFM69_REG_5A_TEST_PA1, 0x5D);
+        rf69_write(RFM69_REG_5C_TEST_PA2, 0x7C);
         /* Set PA Level */
         paLevel = power + 11;
-        _rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_OFF | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | paLevel);
+        rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_OFF | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | paLevel);
     }
 
     /* Wait for PA ramp-up */
     res = 0;
     while (!(res & RF_IRQFLAGS1_TXREADY))
-        _rf69_read(RFM69_REG_27_IRQ_FLAGS1, &res);
+        rf69_read(RFM69_REG_27_IRQ_FLAGS1, &res);
 
     /* Throw Buffer into FIFO, packet transmission will start 
      * automatically */
@@ -298,7 +318,7 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
     /* Wait for packet to be sent */
     res = 0;
     while (!(res & RF_IRQFLAGS2_PACKETSENT))
-        _rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
+        rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
 
     /* Return Transceiver to original mode */
     rf69_set_mode(oldMode);
@@ -306,10 +326,10 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
     /* If we were in high power, switch off High Power Registers */
     if (power > 17) {
         /* Disable High Power Registers */
-        _rf69_write(RFM69_REG_5A_TEST_PA1, 0x55);
-        _rf69_write(RFM69_REG_5C_TEST_PA2, 0x70);
+        rf69_write(RFM69_REG_5A_TEST_PA1, 0x55);
+        rf69_write(RFM69_REG_5C_TEST_PA2, 0x70);
         /* Enable Over Current Protection */
-        _rf69_write(RFM69_REG_13_OCP, RF_OCP_ON | RF_OCP_TRIM_95);
+        rf69_write(RFM69_REG_13_OCP, RF_OCP_ON | RF_OCP_TRIM_95);
     }
 
     return RFM_OK;
@@ -349,27 +369,27 @@ rfm_status_t rf69_read_temp(int8_t* temperature)
     rf69_set_mode(RFM69_MODE_STDBY);
 
     /* Trigger Temperature Measurement */
-    _rf69_write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
+    rf69_write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
 
     /* Check Temperature Measurement has started */
     timeout = 0;
     temp = 0;
     while (!(RF_TEMP1_MEAS_RUNNING & temp)) {
-        _rf69_read(RFM69_REG_4E_TEMP1, &temp);
+        rf69_read(RFM69_REG_4E_TEMP1, &temp);
         delay(1);
         if(++timeout > 50)
         {
             *temperature = -127.0;
             return RFM_TIMEOUT;
         }
-        _rf69_write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
+        rf69_write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
     }
 
     /* Wait for Measurement to complete */
     timeout = 0;
     temp = 0;
     while (RF_TEMP1_MEAS_RUNNING & temp) {
-        _rf69_read(RFM69_REG_4E_TEMP1, &temp);
+        rf69_read(RFM69_REG_4E_TEMP1, &temp);
         delay(1);
         if(++timeout > 10)
         {
@@ -380,7 +400,7 @@ rfm_status_t rf69_read_temp(int8_t* temperature)
 
     /* Read raw ADC value */
     temp = 0;
-    _rf69_read(RFM69_REG_4F_TEMP2, &temp);
+    rf69_read(RFM69_REG_4F_TEMP2, &temp);
 	
     /* Set transceiver back to original mode */
     rf69_set_mode(oldMode);
@@ -406,15 +426,15 @@ rfm_status_t rf69_sample_rssi(int16_t* rssi)
         return RFM_FAIL;
 
     /* Trigger RSSI Measurement */
-    _rf69_write(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
+    rf69_write(RFM69_REG_23_RSSI_CONFIG, RF_RSSI_START);
 
     /* Wait for Measurement to complete */
     while (!(RF_RSSI_DONE & res))
-        _rf69_read(RFM69_REG_23_RSSI_CONFIG, &res);
+        rf69_read(RFM69_REG_23_RSSI_CONFIG, &res);
 
     /* Read, store in _lastRssi and return RSSI Value */
     res = 0;
-    _rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
+    rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
     *rssi = -(res/2);
 
     return RFM_OK;

@@ -1,0 +1,32 @@
+#######################################
+# Syntax Coloring Map For WifiManager
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+rfm_status_t	KEYWORD1
+rfm_reg_t KEYWORD1
+
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+rf69_init	KEYWORD2
+rf69_read_temp	KEYWORD2
+rf69_receive	KEYWORD2
+rf69_send	KEYWORD2
+rf69_set_mode	KEYWORD2
+rf69_sample_rssi	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+#	LITERAL1
+RFM69_FIFO_SIZE	LITERAL1
+RFM69_MODE_SLEEP	LITERAL1
+RFM69_MODE_STDBY	LITERAL1
+RFM69_MODE_RX	LITERAL1
+RFM69_MODE_TX	LITERAL1

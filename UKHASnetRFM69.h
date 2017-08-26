@@ -752,6 +752,13 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
 rfm_status_t rf69_set_mode(const rfm_reg_t newMode);
 rfm_status_t rf69_sample_rssi(int16_t* rssi);
 
+rfm_status_t rf69_read(const rfm_reg_t reg, rfm_reg_t* result);
+rfm_status_t rf69_write(const rfm_reg_t reg, const rfm_reg_t val);
+rfm_status_t rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest,
+        uint8_t len);
+rfm_status_t rf69_burst_write(rfm_reg_t reg, const rfm_reg_t* src, 
+        uint8_t len);
+
 /**
  * SPI device driver functions. These are to be provided by the user.
  * Prototypes are provided here such that the library can be built.

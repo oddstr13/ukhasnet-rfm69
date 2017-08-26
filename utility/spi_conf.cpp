@@ -57,7 +57,11 @@ rfm_status_t spi_init(void)
  */
 rfm_status_t spi_exchange_single(const rfm_reg_t out, rfm_reg_t* in)
 {
+    //Serial.print("spi_exchange_single: ");
+    //Serial.print(out, HEX);
+    //Serial.print(" - ");
     *in = SPI.transfer(out);
+    //Serial.println(*in, HEX);
     return RFM_OK;
 }
 
@@ -66,7 +70,7 @@ rfm_status_t spi_exchange_single(const rfm_reg_t out, rfm_reg_t* in)
  */
 rfm_status_t spi_ss_assert(void)
 {
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     digitalWrite(spi_ss, LOW);
     return RFM_OK;
 }
