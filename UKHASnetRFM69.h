@@ -16,7 +16,8 @@
 typedef uint8_t rfm_reg_t;
 
 /* Status codes for return values from library functions */
-typedef enum rfm_status_t { RFM_OK, RFM_FAIL, RFM_TIMEOUT } rfm_status_t;
+typedef enum rfm_status_t { RFM_OK=0, RFM_FAIL, RFM_TIMEOUT, RFM_CRC_ERROR, RFM_BUFFER_OVERFLOW } rfm_status_t;
+//?                         0         1         2            3              4
 
 /* Write commands to the RFM have this bit set */
 #define RFM69_SPI_WRITE_MASK 0x80
@@ -741,12 +742,16 @@ typedef enum rfm_status_t { RFM_OK, RFM_FAIL, RFM_TIMEOUT } rfm_status_t;
 #define RF_TESTLNA_NORMAL                       0x1B
 #define RF_TESTLNA_SENSITIVE                    0x2D
 
+
+uint16_t crc16_ccit(uint8_t *data, int len, uint16_t crc);
+
 /* Public prototypes here */
 rfm_status_t rf69_init(int spi_ss);
 rfm_status_t rf69_init(void);
 rfm_status_t rf69_read_temp(int8_t* temperature);
 rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
         bool* rfm_packet_waiting);
+rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin);
 rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len, 
         const uint8_t power);
 rfm_status_t rf69_set_mode(const rfm_reg_t newMode);

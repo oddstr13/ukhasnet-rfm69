@@ -30,9 +30,24 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <iso646.h>
 
 #include "UKHASnetRFM69.h"
 #include "UKHASnetRFM69-config.h"
+
+unsigned long getTimeSince(unsigned long ___start);
+const unsigned long MAXULONG = 0xffffffff;
+unsigned long now;
+unsigned long getTimeSince(unsigned long ___start) {
+    unsigned long interval;
+    now = millis();
+    if (___start > now) {
+        interval = MAXULONG - ___start + now;
+    } else {
+        interval = now - ___start;
+    }
+    return interval;
+}
 
 /** Track the current mode of the radio */
 static rfm_reg_t _mode;
@@ -262,6 +277,206 @@ rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
 
     *rfm_packet_waiting = false;
     return RFM_OK;
+}
+
+
+// Automatically generated CRC function
+// polynomial: 0x11021
+uint16_t crc16_ccit(uint8_t *data, int len, uint16_t crc) {
+    static const uint16_t table[256] = {
+        0x0000U,0x1021U,0x2042U,0x3063U,0x4084U,0x50A5U,0x60C6U,0x70E7U,
+        0x8108U,0x9129U,0xA14AU,0xB16BU,0xC18CU,0xD1ADU,0xE1CEU,0xF1EFU,
+        0x1231U,0x0210U,0x3273U,0x2252U,0x52B5U,0x4294U,0x72F7U,0x62D6U,
+        0x9339U,0x8318U,0xB37BU,0xA35AU,0xD3BDU,0xC39CU,0xF3FFU,0xE3DEU,
+        0x2462U,0x3443U,0x0420U,0x1401U,0x64E6U,0x74C7U,0x44A4U,0x5485U,
+        0xA56AU,0xB54BU,0x8528U,0x9509U,0xE5EEU,0xF5CFU,0xC5ACU,0xD58DU,
+        0x3653U,0x2672U,0x1611U,0x0630U,0x76D7U,0x66F6U,0x5695U,0x46B4U,
+        0xB75BU,0xA77AU,0x9719U,0x8738U,0xF7DFU,0xE7FEU,0xD79DU,0xC7BCU,
+        0x48C4U,0x58E5U,0x6886U,0x78A7U,0x0840U,0x1861U,0x2802U,0x3823U,
+        0xC9CCU,0xD9EDU,0xE98EU,0xF9AFU,0x8948U,0x9969U,0xA90AU,0xB92BU,
+        0x5AF5U,0x4AD4U,0x7AB7U,0x6A96U,0x1A71U,0x0A50U,0x3A33U,0x2A12U,
+        0xDBFDU,0xCBDCU,0xFBBFU,0xEB9EU,0x9B79U,0x8B58U,0xBB3BU,0xAB1AU,
+        0x6CA6U,0x7C87U,0x4CE4U,0x5CC5U,0x2C22U,0x3C03U,0x0C60U,0x1C41U,
+        0xEDAEU,0xFD8FU,0xCDECU,0xDDCDU,0xAD2AU,0xBD0BU,0x8D68U,0x9D49U,
+        0x7E97U,0x6EB6U,0x5ED5U,0x4EF4U,0x3E13U,0x2E32U,0x1E51U,0x0E70U,
+        0xFF9FU,0xEFBEU,0xDFDDU,0xCFFCU,0xBF1BU,0xAF3AU,0x9F59U,0x8F78U,
+        0x9188U,0x81A9U,0xB1CAU,0xA1EBU,0xD10CU,0xC12DU,0xF14EU,0xE16FU,
+        0x1080U,0x00A1U,0x30C2U,0x20E3U,0x5004U,0x4025U,0x7046U,0x6067U,
+        0x83B9U,0x9398U,0xA3FBU,0xB3DAU,0xC33DU,0xD31CU,0xE37FU,0xF35EU,
+        0x02B1U,0x1290U,0x22F3U,0x32D2U,0x4235U,0x5214U,0x6277U,0x7256U,
+        0xB5EAU,0xA5CBU,0x95A8U,0x8589U,0xF56EU,0xE54FU,0xD52CU,0xC50DU,
+        0x34E2U,0x24C3U,0x14A0U,0x0481U,0x7466U,0x6447U,0x5424U,0x4405U,
+        0xA7DBU,0xB7FAU,0x8799U,0x97B8U,0xE75FU,0xF77EU,0xC71DU,0xD73CU,
+        0x26D3U,0x36F2U,0x0691U,0x16B0U,0x6657U,0x7676U,0x4615U,0x5634U,
+        0xD94CU,0xC96DU,0xF90EU,0xE92FU,0x99C8U,0x89E9U,0xB98AU,0xA9ABU,
+        0x5844U,0x4865U,0x7806U,0x6827U,0x18C0U,0x08E1U,0x3882U,0x28A3U,
+        0xCB7DU,0xDB5CU,0xEB3FU,0xFB1EU,0x8BF9U,0x9BD8U,0xABBBU,0xBB9AU,
+        0x4A75U,0x5A54U,0x6A37U,0x7A16U,0x0AF1U,0x1AD0U,0x2AB3U,0x3A92U,
+        0xFD2EU,0xED0FU,0xDD6CU,0xCD4DU,0xBDAAU,0xAD8BU,0x9DE8U,0x8DC9U,
+        0x7C26U,0x6C07U,0x5C64U,0x4C45U,0x3CA2U,0x2C83U,0x1CE0U,0x0CC1U,
+        0xEF1FU,0xFF3EU,0xCF5DU,0xDF7CU,0xAF9BU,0xBFBAU,0x8FD9U,0x9FF8U,
+        0x6E17U,0x7E36U,0x4E55U,0x5E74U,0x2E93U,0x3EB2U,0x0ED1U,0x1EF0U,
+    };
+
+    while (len > 0) {
+        crc = table[*data ^ (uint8_t)(crc >> 8)] ^ (crc << 8);
+        data++;
+        len--;
+    }
+    return crc;
+}
+
+rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin) {
+    *len = 0;
+    rfm_reg_t res;
+
+    /***** Set up DIO1 **********************************************/
+    pinMode(DIO1_pin, INPUT);
+
+    rf69_read(RFM69_REG_25_DIO_MAPPING1, &res);
+    res &= ~RF_DIOMAPPING1_DIO1_11; // Clear current DIO1 value
+    res |=  RF_DIOMAPPING1_DIO1_10; // Set DIO1 to 10 (FifoNotEmpty)
+    rf69_write(RFM69_REG_25_DIO_MAPPING1, res);
+    /****************************************************************/
+
+    /***** Set up RX Settings **************************************/
+    // PacketFormat=0 + PayloadLength=0 == Unlimited Length Packet Format
+    rf69_read(RFM69_REG_37_PACKET_CONFIG1, &res);
+    // Disable CRC(not possible in infinite packet RX), set PacketFormat=0
+    res &= ~(RF_PACKET1_CRC_ON | RF_PACKET1_FORMAT_VARIABLE);
+    rf69_write(RFM69_REG_37_PACKET_CONFIG1, res);
+    rf69_write(RFM69_REG_38_PAYLOAD_LENGTH, 0); // set PayloadLength=0
+    /****************************************************************/
+
+    if (_mode != RFM69_MODE_RX) {
+        rf69_set_mode(RFM69_MODE_RX);
+    }
+
+    // Wait for FifoNotEmpty flag
+    while (!digitalRead(DIO1_pin)) { // while FIFO is empty
+        yield();
+    }
+
+    /***** Receive packet *******************************************/
+    spi_ss_assert();
+    
+    /* Send the start address with the write mask off */
+    spi_exchange_single(RFM69_REG_00_FIFO & ~RFM69_SPI_WRITE_MASK, &res);
+
+    rfm_status_t err = RFM_OK;
+    unsigned long start;
+    long psize = -1;
+    bool packet_complete = false;
+    
+    while (true) {
+        yield();
+        start = millis();
+        spi_exchange_single(0xFF, &res);
+        buf[(*len)++] = res;
+
+        if (psize > 0) {
+            if (buf[0] == 0) {
+                //* null (1) + size (2) + packet (n) + crc (2)
+                if (*len >= (psize + 5)) {
+                    packet_complete = true;
+                    break; // Packet received
+                }
+            } else {
+                //* size byte (1) + packet (n) + crc (2)
+                if (*len >= (psize + 3)) {
+                    packet_complete = true;
+                    break; // Packet received
+                }
+            }
+        }
+
+        // Make sure we don't exceed the buffer size (might result in incomplete packets if bufsize is too small)
+        if (*len >= bufsize) {
+            err = RFM_BUFFER_OVERFLOW;
+            break;
+        }
+
+        switch (*len) {
+            case 1:
+                if (buf[0] != 0) {
+                    psize = buf[0];
+                    if (bufsize < (psize + 3)) {
+                        err = RFM_BUFFER_OVERFLOW;
+                    }
+                }
+                break;
+            case 5:
+                //* If standard packet size is 0,
+                //* interpet the next 2 bytes as a big-endian uint16_t size field ">H".
+                if (buf[0] == 0) {
+                    psize = (buf[1] << 8) | buf[2];
+                    if (bufsize < (psize + 5)) {
+                        err = RFM_BUFFER_OVERFLOW;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        
+        if (err != RFM_OK) {
+            break;
+        }
+
+        // while FIFO is empty
+        while (!digitalRead(DIO1_pin)) { 
+            if (getTimeSince(start) >= 10) { // Seems to be about 4ms between bytes
+                err = RFM_TIMEOUT;
+                break;
+            }
+            yield();
+        }
+
+        if (err != RFM_OK) {
+            break;
+        }
+    }
+
+    spi_ss_deassert();
+    /****************************************************************/
+
+    
+    //* Read RSSI register (should be of the packet? - TEST THIS)
+    //? From SX1231 Datasheet 3.5.9 - RSSI (Page 29-30)
+    //! "The RSSI sampling must occur during the reception of preamble..."
+    rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
+    *lastrssi = -(((float)res)/2);
+    /* Clear the radio FIFO (found in HopeRF demo code) */
+    _rf69_clear_fifo();
+
+    if (packet_complete) {
+        // crc16-ccit initial value is 0x1D0F
+        uint16_t packet_crc = (buf[(*len)-2] << 8) | buf[(*len)-1];
+        
+        //! CRC16-CCITT (polynomial: 0x11021), initial=0x1D0F
+        //! Checksum is XOR 0xFFFF
+        uint16_t crc = crc16_ccit(buf, (*len)-2, 0x1D0F) ^ 0xFFFF;
+
+        if (crc == packet_crc) {
+            // Remove length byte(s) and crc
+            *len -= 2;
+            uint16_t offset = buf[0] ? 1 : 3;
+            for (uint16_t i=0; i < *len; i++) {
+                buf[i] = buf[i+offset];
+            }
+            *len -= offset;
+
+            *rfm_packet_waiting = true;
+            return err;
+        } else {
+            err = RFM_CRC_ERROR;
+        }
+    } else {
+        err = RFM_FAIL;
+    }
+
+    *rfm_packet_waiting = false;
+    return err;
 }
 
 /**
