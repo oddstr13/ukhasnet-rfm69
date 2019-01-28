@@ -743,6 +743,7 @@ typedef enum rfm_status_t { RFM_OK=0, RFM_FAIL, RFM_TIMEOUT, RFM_CRC_ERROR, RFM_
 #define RF_TESTLNA_SENSITIVE                    0x2D
 
 
+unsigned long getTimeSince(unsigned long ___start);
 uint16_t crc16_ccit(uint8_t *data, int len, uint16_t crc);
 
 /* Public prototypes here */
@@ -754,6 +755,7 @@ rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
 rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin);
 rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len, 
         const uint8_t power);
+rfm_status_t rf69_send_long(const rfm_reg_t* data, uint16_t len, const uint8_t power, const int DIO1_pin);
 rfm_status_t rf69_set_mode(const rfm_reg_t newMode);
 rfm_status_t rf69_sample_rssi(int16_t* rssi);
 

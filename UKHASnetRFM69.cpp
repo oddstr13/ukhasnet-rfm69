@@ -35,7 +35,6 @@
 #include "UKHASnetRFM69.h"
 #include "UKHASnetRFM69-config.h"
 
-unsigned long getTimeSince(unsigned long ___start);
 const unsigned long MAXULONG = 0xffffffff;
 unsigned long now;
 unsigned long getTimeSince(unsigned long ___start) {
@@ -534,6 +533,126 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
     res = 0;
     while (!(res & RF_IRQFLAGS2_PACKETSENT))
         rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
+
+    /* Return Transceiver to original mode */
+    rf69_set_mode(oldMode);
+
+    /* If we were in high power, switch off High Power Registers */
+    if (power > 17) {
+        /* Disable High Power Registers */
+        rf69_write(RFM69_REG_5A_TEST_PA1, 0x55);
+        rf69_write(RFM69_REG_5C_TEST_PA2, 0x70);
+        /* Enable Over Current Protection */
+        rf69_write(RFM69_REG_13_OCP, RF_OCP_ON | RF_OCP_TRIM_95);
+    }
+
+    return RFM_OK;
+}
+
+rfm_status_t rf69_send_long(const rfm_reg_t* data, uint16_t len, const uint8_t power, const int DIO1_pin) {
+    rfm_reg_t oldMode, res;
+    uint8_t paLevel;
+
+    /* power is TX Power in dBmW (valid values are 2dBmW-20dBmW) */
+    if (power < 2 || power > 20) {
+        /* Could be dangerous, so let's check this */
+        return RFM_FAIL;
+    }
+
+    /***** Set up DIO1 **********************************************/
+    pinMode(DIO1_pin, INPUT);
+
+    rf69_read(RFM69_REG_25_DIO_MAPPING1, &res);
+    res &= ~RF_DIOMAPPING1_DIO1_11; // Clear current DIO1 value
+    res |=  RF_DIOMAPPING1_DIO1_01; // Set DIO1 to 01 (FifoFull)
+    rf69_write(RFM69_REG_25_DIO_MAPPING1, res);
+    /****************************************************************/
+
+    /***** Set up TX Settings **************************************/
+    // PacketFormat=0 + PayloadLength=0 == Unlimited Length Packet Format
+    rf69_read(RFM69_REG_37_PACKET_CONFIG1, &res);
+    res &= ~(RF_PACKET1_FORMAT_VARIABLE);       //* set PacketFormat=0
+    res |= RF_PACKET1_CRC_ON;                   //* Enable CRC generation
+    rf69_write(RFM69_REG_37_PACKET_CONFIG1, res);
+
+    rf69_write(RFM69_REG_38_PAYLOAD_LENGTH, 0); //* set PayloadLength=0
+
+    
+    if (len < 5) {
+        //! Start transmitting on complete packet if packet is shorter than 5 (length byte(1) + packet length(len))
+        rf69_write(RFM69_REG_3C_FIFO_THRESHOLD, RF_FIFOTHRESH_TXSTART_FIFOTHRESH | len + 1);
+    } else if (len > 0x1F) {
+        //! Start transmitting on 31 packets in buffer if packet length is larger than that
+        rf69_write(RFM69_REG_3C_FIFO_THRESHOLD, RF_FIFOTHRESH_TXSTART_FIFOTHRESH | 0x1F);
+    } else {
+        //! Start TX on: short style length(1 byte) + minimal packet (0a[Q])
+        rf69_write(RFM69_REG_3C_FIFO_THRESHOLD, RF_FIFOTHRESH_TXSTART_FIFOTHRESH | 0x06);
+    }
+    
+    /****************************************************************/
+
+    oldMode = _mode;
+    
+    /* Start transmitter */
+    rf69_set_mode(RFM69_MODE_TX);
+
+    /* Set up PA */
+    if (power <= 17) {
+        /* Set PA Level */
+        paLevel = power + 28;
+        rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | paLevel);        
+    } else {
+        /* Disable Over Current Protection */
+        rf69_write(RFM69_REG_13_OCP, RF_OCP_OFF);
+        /* Enable High Power Registers */
+        rf69_write(RFM69_REG_5A_TEST_PA1, 0x5D);
+        rf69_write(RFM69_REG_5C_TEST_PA2, 0x7C);
+        /* Set PA Level */
+        paLevel = power + 11;
+        rf69_write(RFM69_REG_11_PA_LEVEL, RF_PALEVEL_PA0_OFF | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | paLevel);
+    }
+
+    /* Wait for PA ramp-up */
+    rf69_read(RFM69_REG_27_IRQ_FLAGS1, &res);
+    while (!(res & RF_IRQFLAGS1_TXREADY)) {
+        yield();
+        rf69_read(RFM69_REG_27_IRQ_FLAGS1, &res);
+    }
+
+    spi_ss_assert();
+    
+    /* Send the start address with the write mask on */
+    spi_exchange_single(RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK, &res);
+    
+    if (len <= 0xff) {
+        /* First byte is packet length */
+        spi_exchange_single((uint8_t)len, &res);
+    } else {
+        spi_exchange_single(0x00, &res);
+        spi_exchange_single((len >> 8) & 0xFF, &res); //! MSB first
+        spi_exchange_single(len & 0xFF, &res);
+    }
+
+    /* Throw Buffer into FIFO, packet transmission will start automatically */
+    for (uint16_t i=0; i<len; i++) {
+        // While FIFO is full, do other things
+        while (digitalRead(DIO1_pin)) {
+            yield();
+        }
+
+        // Put a byte of data into the FIFO
+        spi_exchange_single(data[i], &res);
+    }
+
+    spi_ss_deassert();
+
+    /* Wait for packet to be sent */
+    rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
+    while (!(res & RF_IRQFLAGS2_PACKETSENT)) {
+        yield();
+        rf69_read(RFM69_REG_28_IRQ_FLAGS2, &res);
+    }
+        
 
     /* Return Transceiver to original mode */
     rf69_set_mode(oldMode);
