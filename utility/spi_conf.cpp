@@ -70,7 +70,8 @@ rfm_status_t spi_exchange_single(const rfm_reg_t out, rfm_reg_t* in)
  */
 rfm_status_t spi_ss_assert(void)
 {
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+    //* Maximum frequency is 10MHz
+    SPI.beginTransaction(SPISettings(10000, MSBFIRST, SPI_MODE0)); 
     digitalWrite(spi_ss, LOW);
     return RFM_OK;
 }
@@ -82,6 +83,9 @@ rfm_status_t spi_ss_deassert(void)
 {
     digitalWrite(spi_ss, HIGH);
     SPI.endTransaction();
+    //* Minimum time between SPI accesses is 20ns. Probably fine without, but just to make sure.
+    // SX1231: 2.4.5) Digital Specification - Page 17
+    delayMicroseconds(1); 
     return RFM_OK;
 }
 
