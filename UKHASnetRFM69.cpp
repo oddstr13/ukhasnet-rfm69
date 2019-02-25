@@ -419,6 +419,13 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
     Serial1.println("# rf69_receive_long % FifoNotEmpty");
 #endif
 
+
+    //* Read RSSI register (should be of the packet? - TEST THIS)
+    //? From SX1231 Datasheet 3.5.9 - RSSI (Page 29-30)
+    //! "The RSSI sampling must occur during the reception of preamble..."
+    rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
+    *lastrssi = -(((float)res)/2);
+
     /***** Receive packet *******************************************/
     spi_ss_assert();
     
@@ -507,12 +514,6 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
     spi_ss_deassert();
     /****************************************************************/
 
-    
-    //* Read RSSI register (should be of the packet? - TEST THIS)
-    //? From SX1231 Datasheet 3.5.9 - RSSI (Page 29-30)
-    //! "The RSSI sampling must occur during the reception of preamble..."
-    rf69_read(RFM69_REG_24_RSSI_VALUE, &res);
-    *lastrssi = -(((float)res)/2);
     /* Clear the radio FIFO (found in HopeRF demo code) */
     _rf69_clear_fifo();
 
