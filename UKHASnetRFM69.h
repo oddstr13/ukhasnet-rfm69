@@ -752,7 +752,7 @@ rfm_status_t rf69_init(void);
 rfm_status_t rf69_read_temp(int8_t* temperature);
 rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
         bool* rfm_packet_waiting);
-rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin);
+rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin, const unsigned long timeout=0);
 rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len, 
         const uint8_t power);
 rfm_status_t rf69_send_long(const rfm_reg_t* data, uint16_t len, const uint8_t power, const int DIO1_pin);

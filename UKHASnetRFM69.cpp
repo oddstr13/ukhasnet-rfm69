@@ -25,6 +25,8 @@
  * @{
  */
 
+//#define RFM_DEBUG
+
 //#include <avr/io.h>
 //#include <util/delay.h>
 #include <Arduino.h>
@@ -99,6 +101,10 @@ rfm_status_t rf69_init(void)
  */
 rfm_status_t rf69_read(const rfm_reg_t reg, rfm_reg_t* result)
 {
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_read: 0x");
+    Serial1.println(reg, HEX);
+#endif
     rfm_reg_t data;
 
     spi_ss_assert();
@@ -124,6 +130,10 @@ rfm_status_t rf69_read(const rfm_reg_t reg, rfm_reg_t* result)
  */
 rfm_status_t rf69_write(const rfm_reg_t reg, const rfm_reg_t val)
 {
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_write: 0x");
+    Serial1.println(reg, HEX);
+#endif
     rfm_reg_t dummy;
 
     spi_ss_assert();
@@ -150,6 +160,10 @@ rfm_status_t rf69_write(const rfm_reg_t reg, const rfm_reg_t val)
 rfm_status_t rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest, 
         uint8_t len)
 {
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_burst_read: 0x");
+    Serial1.println(reg, HEX);
+#endif
     rfm_reg_t dummy;
 
     spi_ss_assert();
@@ -176,6 +190,10 @@ rfm_status_t rf69_burst_read(const rfm_reg_t reg, rfm_reg_t* dest,
 rfm_status_t rf69_burst_write(rfm_reg_t reg, const rfm_reg_t* src, 
         uint8_t len)
 {
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_burst_write: 0x");
+    Serial1.println(reg, HEX);
+#endif
     rfm_reg_t dummy;
 
     spi_ss_assert();
@@ -199,6 +217,9 @@ rfm_status_t rf69_burst_write(rfm_reg_t reg, const rfm_reg_t* src,
  */
 static rfm_status_t _rf69_fifo_write(const rfm_reg_t* src, uint8_t len)
 {
+#ifdef RFM_DEBUG
+    Serial1.println("# _rf69_fifo_write");
+#endif
     rfm_reg_t dummy;
 
     spi_ss_assert();
@@ -227,9 +248,26 @@ static rfm_status_t _rf69_fifo_write(const rfm_reg_t* src, uint8_t len)
  */
 rfm_status_t rf69_set_mode(const rfm_reg_t newMode)
 {
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_set_mode: 0x");
+    Serial1.println(newMode, HEX);
+#endif
     rfm_reg_t res;
     rf69_read(RFM69_REG_01_OPMODE, &res);
+    // Just return if correct mode is already set
+    if ((res & 0x1C) == newMode) {
+        _mode = newMode;
+        return RFM_OK;
+    }
+
     rf69_write(RFM69_REG_01_OPMODE, (res & 0xE3) | newMode);
+    
+    rf69_read(RFM69_REG_01_OPMODE, &res);
+    while (!((res & 0x1C) == newMode)) {
+        yield();
+        rf69_read(RFM69_REG_01_OPMODE, &res);
+    }
+
     _mode = newMode;
     return RFM_OK;
 }
@@ -247,6 +285,9 @@ rfm_status_t rf69_set_mode(const rfm_reg_t newMode)
 rfm_status_t rf69_receive(rfm_reg_t* buf, rfm_reg_t* len, int16_t* lastrssi,
         bool* rfm_packet_waiting)
 {
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_receive");
+#endif
     rfm_reg_t res;
 
     if(_mode != RFM69_MODE_RX)
@@ -325,16 +366,27 @@ uint16_t crc16_ccit(uint8_t *data, int len, uint16_t crc) {
     return crc;
 }
 
-rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin) {
+rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, bool* rfm_packet_waiting, const uint16_t bufsize, const int DIO1_pin, const unsigned long timeout) {
+    unsigned long start = millis();
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_receive_long");
+#endif
     *len = 0;
     rfm_reg_t res;
 
     /***** Set up DIO1 **********************************************/
     pinMode(DIO1_pin, INPUT);
-
     rf69_read(RFM69_REG_25_DIO_MAPPING1, &res);
+#ifdef RFM_DEBUG
+    Serial1.print(">RFM69_REG_25_DIO_MAPPING1: ");
+    Serial1.println(res, BIN);
+#endif
     res &= ~RF_DIOMAPPING1_DIO1_11; // Clear current DIO1 value
     res |=  RF_DIOMAPPING1_DIO1_10; // Set DIO1 to 10 (FifoNotEmpty)
+#ifdef RFM_DEBUG
+    Serial1.print("<RFM69_REG_25_DIO_MAPPING1: ");
+    Serial1.println(res, BIN);
+#endif
     rf69_write(RFM69_REG_25_DIO_MAPPING1, res);
     /****************************************************************/
 
@@ -351,10 +403,21 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
         rf69_set_mode(RFM69_MODE_RX);
     }
 
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_receive_long % Waiting for FifoNotEmpty");
+#endif
     // Wait for FifoNotEmpty flag
     while (!digitalRead(DIO1_pin)) { // while FIFO is empty
+        if (timeout) { // Default is 0, or no timeout.
+            if (getTimeSince(start) > timeout) {
+                return RFM_TIMEOUT;
+            }
+        }
         yield();
     }
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_receive_long % FifoNotEmpty");
+#endif
 
     /***** Receive packet *******************************************/
     spi_ss_assert();
@@ -363,10 +426,12 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
     spi_exchange_single(RFM69_REG_00_FIFO & ~RFM69_SPI_WRITE_MASK, &res);
 
     rfm_status_t err = RFM_OK;
-    unsigned long start;
     long psize = -1;
     bool packet_complete = false;
-    
+
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_receive_long % Starting FIFO read loop");
+#endif
     while (true) {
         yield();
         start = millis();
@@ -435,7 +500,10 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
             break;
         }
     }
-
+#ifdef RFM_DEBUG
+    Serial1.print("# rf69_receive_long % FIFO read loop done, received: ");
+    Serial1.println(*len, DEC);
+#endif
     spi_ss_deassert();
     /****************************************************************/
 
@@ -489,6 +557,9 @@ rfm_status_t rf69_receive_long(rfm_reg_t* buf, uint16_t* len, float* lastrssi, b
 rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len, 
         const uint8_t power)
 {
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_send");
+#endif
     rfm_reg_t oldMode, res;
     uint8_t paLevel;
 
@@ -550,6 +621,9 @@ rfm_status_t rf69_send(const rfm_reg_t* data, uint8_t len,
 }
 
 rfm_status_t rf69_send_long(const rfm_reg_t* data, uint16_t len, const uint8_t power, const int DIO1_pin) {
+#ifdef RFM_DEBUG
+    Serial1.println("# rf69_send_long");
+#endif
     rfm_reg_t oldMode, res;
     uint8_t paLevel;
 
